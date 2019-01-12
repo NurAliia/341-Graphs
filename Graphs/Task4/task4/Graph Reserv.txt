@@ -1,0 +1,476 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace task4
+{
+    class Graph
+    {
+        public Dictionary<int, SortedList<int, int>> graph = new Dictionary<int, SortedList<int, int>>();
+        private int type;        
+        private HashSet<int> nodes = new HashSet<int>();
+        //private PriorityQueue<int> queue = new PriorityQueue<int>();
+        //private int[] p;
+
+        public Graph(int type, int v)
+        {
+            this.type = type;
+            if (type == 1) //Невзвешанный граф
+            {
+                for (int i = 0; i < v; i++)
+                {
+                    SortedList<int, int> list = new SortedList<int, int>();
+                    for (int j = 0; j < v; j++)
+                    {
+                        if (i != j)
+                        {
+                            list.Add(j, 1);
+                        }
+                    }
+                    graph.Add(i, list);
+                }
+            }
+            else
+            {
+                Random rnd = new Random();
+                for (int i = 0; i < v; i++)
+                {
+                    SortedList<int, int> list = new SortedList<int, int>();
+                    for (int j = 0; j < v; j++)
+                    {
+                        if (i != j)
+                        {
+                            list.Add(j, rnd.Next(0, 100));
+                        }
+                    }
+                    graph.Add(i, list);
+                }
+            }
+        }
+
+        public Graph()
+        {
+            // FileStream file1 = new FileStream("Input.txt", FileMode.Open); //создаем файловый поток            
+            using (StreamReader fileIn = new StreamReader("Input.txt"))
+            {
+                int type = int.Parse(fileIn.ReadLine());
+                this.type = type;
+                string line = fileIn.ReadToEnd();
+                string[] lines = line.Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (lines[i] != "-1")
+                    {
+                        SortedList<int, int> list = new SortedList<int, int>();
+                        string[] line2 = lines[i].Split(' ');
+                        for (int j = 0; j < line2.Length - 1; j += 2)
+                        {
+                            list.Add(Convert.ToInt32(line2[j]), Convert.ToInt32(line2[j + 1]));
+                        }
+                        graph.Add(i, list);
+                    }
+                    else
+                    {
+                        graph.Add(i, null);
+                    }
+                }
+            }
+        }
+        public Graph(Graph a)
+        {
+            for (int i = 0; i < a.Size; i++)
+            {
+                SortedList<int, int> list1 = new SortedList<int, int>(a.graph[i]);
+                graph.Add(i, list1);
+            }
+        }
+        public int Size //свойство для получения размерности списка
+        {
+            get
+            {
+                return graph.Count;
+            }
+        }
+        public void AddNode()
+        {
+            SortedList<int, int> list = new SortedList<int, int>();
+            if (type == 0) //взвешанный граф
+            {
+                Random rnd = new Random();
+                int graphCount = graph.Count;
+                for (int i = 0; i < graphCount; i++)
+                {
+                    int weigth = rnd.Next(0, 100);
+                    graph[i].Add(graphCount, weigth);
+                    list.Add(i, weigth);
+                }
+                graph.Add(graphCount, list);
+            }
+            else
+            {
+                int graphCount = graph.Count;
+                for (int i = 0; i < graphCount; i++)
+                {
+                    graph[i].Add(graphCount, 1);
+                    list.Add(i, 1);
+                }
+                graph.Add(graphCount, list);
+            }
+        }
+        public void AddEdge(int u, int v)
+        {
+            SortedList<int, int> list = new SortedList<int, int>();
+            if (type == 0) //взвешанный граф
+            {
+                Random rnd = new Random();
+                graph[u].Add(v, rnd.Next(0, 100));
+                graph[v].Add(u, rnd.Next(0, 100));
+            }
+            else
+            {
+                graph[u].Add(v, 1);
+                graph[v].Add(u, 1);
+            }
+        }
+        public void RemoveNode(int element)
+        {
+            foreach (KeyValuePair<int, int> item in graph[element])
+            {
+                graph[item.Key].Remove(element);
+            }
+            graph.Remove(element);
+        }
+        public void RemoveEdge(int u, int v)
+        {
+            graph[u].Remove(v);
+            graph[v].Remove(u);
+        }
+        public void TryGetValue(SortedList<int, int> list1, int u)
+        {
+            graph.TryGetValue(u, out list1);
+        }
+        public SortedList<int, int> Values(int i)
+        {
+            return graph[i];
+        }
+        public int Type { get { return type; } }
+        public int ValuesCount { get { return graph.Values.Count; } }
+        public Dictionary<int, SortedList<int, int>>.KeyCollection Keys
+        {
+            get
+            {
+                return graph.Keys;
+            }
+
+        }
+        public int Elem(int i, int u)
+        {
+            int k = 0;
+            if (i != u)
+            {
+                foreach (KeyValuePair<int, int> item in graph[i])
+                {
+                    if (k == u)
+                    {
+                        return item.Value;
+                    }
+                    k++;
+                }
+            }
+            return 0;
+        }
+        public Dictionary<int, SortedList<int, bool>> Dejkstra(int node)
+        {
+            Dictionary<int, SortedList<int, bool>> dictionary = new Dictionary<int, SortedList<int, bool>>();            
+            Initialize(node, dictionary);
+            foreach (var i in graph)
+            {
+                long min = int.MaxValue;
+                int w = 0;
+                foreach (var j in dictionary)
+                {
+                    if (j.Value.Keys[0] < min && j.Value.Values[0] == true)
+                    {
+                        min = j.Value.Keys[0];
+                        w = j.Key;
+                    }
+                }
+                SortedList<int, bool> newList = new SortedList<int, bool>(1);
+                newList.Add(dictionary[w].Keys[0], false);
+                dictionary[w] = newList;      
+                int[] adj = new int[graph[w].Count];
+                if (Adj(w, adj))
+                {
+                    int k = 0;
+                    foreach (int v in adj)
+                    {
+                        Relax(w, v, k, dictionary);
+                        k++;
+                    }
+                }
+            }
+            return dictionary;
+        }
+        public void Initialize(int node, Dictionary<int, SortedList<int, bool>> d)
+        {         
+            foreach (var str in graph)
+            {
+                SortedList<int, bool> list = new SortedList<int, bool>();
+                if (str.Key == node)
+                {
+                    list.Add(0, true);
+                }
+                else
+                {
+                    list.Add(int.MaxValue - 10, true);
+                }
+                d.Add(str.Key, list);
+            }           
+           
+        }
+        public void Relax(int u, int v, int k, Dictionary<int, SortedList<int, bool>>  d)
+        {
+            SortedList<int, bool> newl = new SortedList<int, bool>();
+            if ((d[v].Values[0]) && (d[v].Keys[0] > d[u].Keys[0] + graph[u].Values[k]))
+            {
+                newl.Add(d[u].Keys[0] + graph[u].Values[k], d[v].Values[0]);
+                // d[v].Keys[0] = d[u].Keys[0] + graph[u].Values[k];
+                d[v] = newl;
+            }
+        }
+        public bool Adj(int node, int[] adj)
+        {
+            int i = 0;
+            if (graph[node] != null)
+            {
+                foreach (KeyValuePair<int, int> item in graph[node])
+                {
+                    adj[i] = item.Key;
+                    i++;
+                }
+                return true;
+            }
+            return false;
+        }
+        public void Initialize(int node, SortedList<int, int> d, bool[] nov)
+        {
+            foreach (var str in graph)
+            {
+                if (str.Key != node)
+                {
+                    d.Add(str.Key, int.MaxValue - 10);
+                    nov[str.Key] = true;
+                }
+                else
+                {
+                    d.Add(str.Key, 0);
+                    nov[str.Key] = false; 
+                }
+            }
+        }
+        public bool FordBellman(int node, SortedList<int, int> d)
+        {
+            bool[] nov = new bool[Size];
+            Initialize(node, d, nov);
+            for (int i = 0; i < Size - 1; i++)
+            {
+                foreach (var str in graph)
+                {
+                    foreach (KeyValuePair<int, int> pair in str.Value)
+                    {
+                        if (nov[pair.Key] && (d[pair.Key] > d[str.Key] + pair.Value))
+                        {
+                            d[pair.Key] = d[str.Key] + pair.Value;
+                        }
+                    }
+                }
+            }
+            foreach (KeyValuePair<int, SortedList<int, int>> p in graph)
+            {
+                if (p.Value != null)
+                {
+                    foreach (KeyValuePair<int, int> pair in graph[p.Key])
+                    {
+                        if ((pair.Key != node) && (d[pair.Key] > d[p.Key] + pair.Value))
+                        {
+                            Console.WriteLine(pair.Key + " " + p.Key + ' ' + pair.Value);
+                            return false;
+                        }
+                    }
+                }               
+            }
+            return true;
+        }
+        public void Floyd()
+        {
+            int[][] d = new int[Size][];
+            for (int i = 0; i < Size; i++)
+            {
+                d[i] = new int[Size];
+                for (int j = 0; j < Size; j++)
+                {
+                    if (i == j)
+                    {
+                        d[i][j] = 0;
+                    }
+                    else
+                    {
+                        if (graph[i] != null)
+                        {
+                            if (graph[i].ContainsKey(j))
+                            {
+                                int value;
+                                graph[i].TryGetValue(j, out value);
+                                d[i][j] = value;
+                            }
+                            else
+                            {
+                                d[i][j] = int.MaxValue;
+                            }
+                        }
+                        else
+                        {
+                            d[i][j] = int.MaxValue;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < Size; i++)
+            {
+                for (int k = 0; k < Size; k++)
+                {
+                    for (int j = 0; j < Size; j++)
+                    {
+                        if ((i != j) && (d[i][k] < int.MaxValue && d[k][j] < int.MaxValue))
+                        {
+                            d[i][j] = Math.Min(d[i][j], d[i][k] + d[k][j]);
+                            //int distance = d[i][k] + d[k][j];
+                            //if (d[i][j] > distance)
+                            //{
+                            //    d[i][j] = distance;                         
+                            //}
+                        }
+                    }
+                }
+            }
+            ShowMassive(d);
+        }
+        public void Show()
+        {
+            foreach (KeyValuePair<int, SortedList<int, int>> keyValue in graph)
+            {
+                Console.Write(keyValue.Key + " - ");
+                if (keyValue.Value != null)
+                {
+                    foreach (KeyValuePair<int, int> element in keyValue.Value)
+                    {
+                        Console.Write(element);
+                    }
+                    Console.WriteLine();
+                }
+                else
+                {
+                    Console.WriteLine(" ");
+                }
+            }
+        }
+        public void ShowMassive(int[][] d)
+        {
+            for (int k = 0; k < Size; k++)
+            {
+                for (int j = 0; j < Size; j++)
+                {
+                    Console.Write(d[k][j] + " ");
+                }
+                Console.WriteLine();
+            }
+        }
+        public bool Ford_Bellman(int v, out int[] p, out long[] d)
+        {
+            d = new long[Size];
+            p = new int[Size];
+            bool[] nov = new bool[Size];
+            InitializeSingleSource(v, d, p, nov);
+            int top = -1;
+            for (int i = 0; i < Size - 1; i++)
+            {
+                top = -1;
+                foreach (var dictionary in graph)
+                {
+                    foreach (var elem in dictionary.Value)
+                    {
+                        top = Relax(dictionary.Key, elem.Key, nov, p, d, top);
+                        //top = elem.Key;
+                    }
+                }
+            }
+            if (top == -1)
+            {
+                Console.WriteLine("Нет отриц циклов");
+                return true;
+            }
+            else
+            {
+                int y = top;
+                for (int i = 0; i < Size; ++i)
+                {
+                    y = p[y];
+                }
+
+                List<int> cycle = new List<int>();
+
+                for (int i = y; ; i = p[i])
+                {
+                    cycle.Add(i);
+                    if (i == y && cycle.Count > 1)
+                        break;
+                }
+                cycle.Reverse();
+
+                Console.WriteLine("Отрицательный цикл:");
+                foreach (int elem in cycle)
+                {
+                    Console.Write("{0} ", elem);
+                }
+                Console.WriteLine();
+                return false;
+            }
+        }
+        private int Relax(int w, int u, bool[] nov, int[] p, long[] d, int top)
+        {
+            if (nov[u] && (d[u] > (d[w] + graph[w][u])))
+            {
+                d[u] = d[w] + graph[w][u];
+                p[u] = w;
+                top = u;
+            }
+            return top;
+        }
+
+        private void InitializeSingleSource(int v, long[] d, int[] p, bool[] nov)
+        {
+            for (int i = 0; i < Size; i++)
+            {
+                if (graph[v].ContainsKey(i))
+                {
+                    d[i] = graph[v][i];
+                    p[i] = v;
+                    nov[i] = true;
+                }
+                else
+                {
+                    d[i] = int.MaxValue;
+                    p[i] = -1;
+                    nov[i] = true;
+                }
+
+            }
+            d[v] = 0;
+            nov[v] = false;
+        }
+    }
+}
+
